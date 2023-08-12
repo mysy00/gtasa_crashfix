@@ -62,61 +62,6 @@ void SetHeatHazeEnabled ( bool bEnabled )
         MemPut < BYTE > ( 0x701780, 0xC3 );
 }
 
-void checkForUpdate() {
-	remove("crashes.delete");
-	HINTERNET hNet, hNetFile;
-
-	hNet = InternetOpenA("Mozilla/5.0", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-	if(hNet == NULL)
-		return;
-
-		hNetFile = InternetOpenUrlA(hNet, "https://raw.githubusercontent.com/Whitetigerswt/gtasa_crashfix/master/LatestVersion.txt", 0, 0, 0, 0);
-
-	if(hNetFile == NULL)
-		return;
-
-	char szLatestVersion[256];
-	DWORD dwBytesRead = 0;
-	do {
-		InternetReadFile(hNetFile, (LPVOID)szLatestVersion, 256, &dwBytesRead);
-	} while(dwBytesRead > 0);
-
-	float version;
-	char* url = new char[200];
-	sscanf_s(szLatestVersion, "%f %s", &version, url, 200);
-
-	if(version > VERSION) {
-		DeleteUrlCacheEntry(url);
-
-		char currentDir[MAX_PATH + 15];
-		GetCurrentDirectory( MAX_PATH, currentDir );
-
-		strcat_s(currentDir, "\\crashes.delete_");
-
-		DeleteFile(currentDir);
-
-		HRESULT hr = URLDownloadToFile(NULL, url, currentDir, 0, NULL); 
-
-		if(SUCCEEDED(hr)) {
-			char currentMod[MAX_PATH + 15];
-			GetModuleFileName(g_hMod, currentMod, MAX_PATH+15);
-
-			currentMod[strlen(currentMod)] = '\0';
-
-			rename(currentMod, "crashes.delete");
-
-			rename(currentDir, "crashes.asi");
-
-			LoadLibrary("crashes.asi");
-			delete[] url;
-
-			FreeLibraryAndExitThread(g_hMod, 0);
-		}
-	}
-	delete[] url;
-}
-
-
 static void WINAPI Load(HMODULE hModule) 
 {
 	DWORD oldProt;
@@ -137,7 +82,7 @@ static void WINAPI Load(HMODULE hModule)
 	}
 
 	// Make it so we can launch more than 1 gta_sa.exe (reversed addresses from http://ugbase.eu/index.php?threads/gta-sa-multiprocess-updated.4100/)
-	MemCpy((void*)0x406946, "\x00\x00\x00\x00", 4);
+	// MemCpy((void*)0x406946, "\x00\x00\x00\x00", 4);
 
 	// Allow windowed mode. Alt+enter to activate (reversed addresses from http://ugbase.eu/index.php?threads/gta-sa-multiprocess-updated.4100/)
 	MemCpy((void*)0x074872D, "\x90\x90\x90\x90\x90\x90\x90\x90\x90", 9);
@@ -487,11 +432,6 @@ static void WINAPI Load(HMODULE hModule)
 					MemPut < BYTE > (0x555858, 0x90);
 				}
 			}
-			else if (type.compare("fpslimit") == 0)
-			{
-				if(enabled)
-					disableFPSLock();
-			}
 			else if (type.compare("nopostfx") == 0)
 			{
 				if (enabled)
@@ -522,7 +462,6 @@ static void WINAPI Load(HMODULE hModule)
 		ofile << "flashes 0" << endl;
 		ofile << "fixblackroads 1" << endl;
 		ofile << "interiorreflections 1" << endl;
-		ofile << "fpslimit 0" << endl;
 		ofile << "nopostfx 0" << endl;
 		ofile.close();
 
@@ -547,12 +486,9 @@ static void WINAPI Load(HMODULE hModule)
 		readfile << "flashes - set to 0 to disable flashes" << endl;
 		readfile << "fixblackroads - set to 1 to fix black roads on some PC's off in the distance" << endl;
 		readfile << "interiorreflections - set to 0 to disable interior reflections" << endl;
-		readfile << "fpslimit - set to 1 to enable the removal of SA-MP's internal FPS limiting code. By default, you can't get over 100 fps. set to 0 to disable this. (NOTE: This may cause issues with newer SA-MP releases)." << endl;
 		readfile << "nopostfx - set to 1 to disable post effects." << endl;
 		readfile.close();
 	}
-
-	checkForUpdate();
 	
 	bool laststate = false;
 	int previousbrightness = -1;
